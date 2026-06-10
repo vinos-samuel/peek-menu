@@ -1,25 +1,45 @@
 {
   "expo": {
-    "name": "peek",
-    "slug": "peek",
+    "name": "Peek",
+    "slug": "peek-menu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#FAFAF8"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vinossamuel.peek",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Peek uses your camera to scan restaurant menus.",
+        "NSLocationWhenInUseUsageDescription": "Peek uses your location to find the restaurant you're in and match dish photos."
+      }
     },
     "android": {
+      "package": "com.vinossamuel.peek",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#E85D2F",
+        "foregroundImage": "./assets/icon.png"
       },
-      "predictiveBackGestureEnabled": false
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "plugins": [
+      "expo-camera",
+      "expo-location",
+      "expo-image",
+      "expo-status-bar"
+    ],
+    "extra": {
+      "GEMINI_API_KEY": "",
+      "PLACES_API_KEY": "",
+      "SEARCH_API_KEY": "",
+      "SEARCH_CX": ""
     }
   }
 }
