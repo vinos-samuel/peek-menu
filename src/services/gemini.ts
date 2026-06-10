@@ -4,19 +4,19 @@ const GEMINI_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 export interface DishResult {
-  originalName: string; // as printed on menu
-  englishName: string;  // translated / plain English
+  originalName: string;
+  englishName: string;
   price?: string;
-  section?: string;     // e.g. "Starters", "Mains"
+  section?: string;
 }
 
 export async function extractDishesFromMenu(
   photoUri: string,
   apiKey: string,
 ): Promise<DishResult[]> {
-  // Read the image as base64
+  // Use readAsStringAsync with base64 encoding (still valid in expo-file-system v18+)
   const base64 = await FileSystem.readAsStringAsync(photoUri, {
-    encoding: FileSystem.EncodingType.Base64,
+    encoding: 'base64' as FileSystem.EncodingType,
   });
 
   const body = {
@@ -63,7 +63,6 @@ No markdown. No explanation. JSON array only.`,
   const text: string =
     json.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]';
 
-  // Strip markdown code fences if Gemini adds them
   const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   return JSON.parse(clean) as DishResult[];
 }

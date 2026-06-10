@@ -9,6 +9,7 @@ import {
   Modal,
   Image,
   Dimensions,
+  ScrollView,
   ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,194 +22,279 @@ type Props = {
 };
 
 const { width } = Dimensions.get('window');
-const CARD_IMG_H = 160;
+
+const FLAG_MAP: Record<string, { icon: string; label: string }> = {
+  v: { icon: '🌱', label: 'veg' },
+  g: { icon: '🌾', label: 'gluten' },
+  e: { icon: '🥚', label: 'egg' },
+  d: { icon: '🥛', label: 'dairy' },
+  f: { icon: '🐟', label: 'fish' },
+};
 
 export default function ResultsScreen({ navigation, route }: Props) {
   const { dishes } = route.params;
   const [selected, setSelected] = useState<(typeof dishes)[0] | null>(null);
-
-  const withPhotos = dishes.filter((d) => d.photo.source !== 'none');
-  const withoutPhotos = dishes.filter((d) => d.photo.source === 'none');
-
-  // Group by section
-  const sections: Record<string, typeof dishes> = {};
-  dishes.forEach((d) => {
-    const key = d.section ?? 'Menu';
-    if (!sections[key]) sections[key] = [];
-    sections[key].push(d);
-  });
-
-  const sectionList = Object.entries(sections);
+  const withPhotos = dishes.filter((d) => d.photo.source !== 'none').length;
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header */}
+
+      {/* Sticky header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.backBtn}>
-          <Text style={styles.backText}>← New Scan</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('Home')}>
+          <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {withPhotos.length} / {dishes.length} dishes
-        </Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Menu</Text>
+          <Text style={styles.headerSub}>{dishes.length} dishes · tap any to peek</Text>
+        </View>
+        <View style={styles.langPill}>
+          <Text style={styles.langText}>→ EN</Text>
+        </View>
       </View>
 
+      {/* Dish list */}
       <FlatList
-        data={sectionList}
-        keyExtractor={([section]) => section}
+        data={dishes}
+        keyExtractor={(d) => d.originalName}
         contentContainerStyle={styles.list}
-        renderItem={({ item: [section, items] }) => (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{section}</Text>
-            {items.map((dish) => (
-              <TouchableOpacity
-                key={dish.originalName}
-                style={styles.card}
-                activeOpacity={dish.photo.source !== 'none' ? 0.8 : 1}
-                onPress={() => dish.photo.source !== 'none' && setSelected(dish)}
-              >
-                {/* Photo area */}
-                <View style={styles.imgBox}>
-                  {dish.photo.source !== 'none' ? (
-                    <Image
-                      source={{ uri: dish.photo.uri }}
-                      style={styles.img}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.noPhoto}>
-                      <Text style={styles.noPhotoText}>No photo yet</Text>
-                    </View>
-                  )}
-                  {dish.photo.source === 'search' && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>web</Text>
-                    </View>
-                  )}
+        renderItem={({ item: dish }) => (
+          <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.75}
+            onPress={() => setSelected(dish)}
+          >
+            {/* Thumbnail */}
+            <View style={styles.thumb}>
+              {dish.photo.source !== 'none' ? (
+                <Image source={{ uri: dish.photo.uri }} style={styles.thumbImg} resizeMode="cover" />
+              ) : (
+                <View style={styles.thumbEmpty}>
+                  <Text style={styles.thumbEmptyIcon}>✨</Text>
+                  <Text style={styles.thumbEmptyText}>no{'\n'}photo</Text>
                 </View>
+              )}
+            </View>
 
-                {/* Info */}
-                <View style={styles.info}>
-                  <Text style={styles.dishName}>{dish.originalName}</Text>
-                  {dish.englishName !== dish.originalName && (
-                    <Text style={styles.englishName}>{dish.englishName}</Text>
-                  )}
-                  {dish.price && <Text style={styles.price}>{dish.price}</Text>}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+            {/* Info */}
+            <View style={styles.cardInfo}>
+              <Text style={styles.dishName} numberOfLines={1}>{dish.originalName}</Text>
+              {dish.englishName !== dish.originalName && (
+                <Text style={styles.dishEn}>↳ {dish.englishName}</Text>
+              )}
+              {dish.photo.source === 'search' && (
+                <Text style={styles.webBadge}>WEB</Text>
+              )}
+            </View>
+
+            {/* Price */}
+            {dish.price && <Text style={styles.price}>{dish.price}</Text>}
+          </TouchableOpacity>
         )}
       />
 
-      {/* Full-screen lightbox */}
-      <Modal visible={!!selected} transparent animationType="fade">
+      {/* Floating scan-again pill */}
+      <View style={styles.fab}>
         <TouchableOpacity
-          style={styles.lightbox}
-          activeOpacity={1}
-          onPress={() => setSelected(null)}
+          style={styles.fabBtn}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Camera')}
         >
-          {selected && (
-            <>
-              <Image
-                source={{ uri: selected.photo.uri }}
-                style={styles.lightboxImg}
-                resizeMode="contain"
-              />
-              <View style={styles.lightboxInfo}>
-                <Text style={styles.lightboxName}>{selected.originalName}</Text>
-                {selected.englishName !== selected.originalName && (
-                  <Text style={styles.lightboxEn}>{selected.englishName}</Text>
-                )}
-                {selected.price && (
-                  <Text style={styles.lightboxPrice}>{selected.price}</Text>
-                )}
-              </View>
-              <Text style={styles.lightboxDismiss}>Tap anywhere to close</Text>
-            </>
-          )}
+          <Text style={styles.fabText}>📷  Scan again</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Dish modal */}
+      <Modal visible={!!selected} transparent animationType="slide">
+        {selected && (
+          <View style={styles.modal}>
+            {/* Hero photo */}
+            <View style={styles.modalHero}>
+              {selected.photo.source !== 'none' ? (
+                <Image
+                  source={{ uri: selected.photo.uri }}
+                  style={styles.modalImg}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.modalNoPhoto}>
+                  <Text style={styles.modalNoPhotoText}>No photo found</Text>
+                </View>
+              )}
+
+              {/* Close */}
+              <TouchableOpacity style={styles.closeBtn} onPress={() => setSelected(null)}>
+                <Text style={styles.closeBtnText}>×</Text>
+              </TouchableOpacity>
+
+              {/* Source badge */}
+              {selected.photo.source === 'search' && (
+                <View style={styles.sourceBadge}>
+                  <Text style={styles.sourceBadgeText}>web search</Text>
+                </View>
+              )}
+              {selected.photo.source === 'places' && (
+                <View style={styles.sourceBadge}>
+                  <Text style={styles.sourceBadgeText}>📷 from diners · Google</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Content */}
+            <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
+              <View style={styles.modalNameRow}>
+                <Text style={styles.modalName}>{selected.originalName}</Text>
+                {selected.price && <Text style={styles.modalPrice}>{selected.price}</Text>}
+              </View>
+
+              {selected.englishName !== selected.originalName && (
+                <View style={styles.translationPill}>
+                  <Text style={styles.translationText}>↳ {selected.englishName}</Text>
+                </View>
+              )}
+
+              <View style={styles.divider} />
+              <Text style={styles.sourceNote}>
+                {selected.photo.source === 'none'
+                  ? 'No diner photos found for this dish.'
+                  : selected.photo.source === 'places'
+                  ? 'Photo from Google restaurant reviews.'
+                  : 'Photo from web image search.'}
+              </Text>
+            </ScrollView>
+          </View>
+        )}
       </Modal>
+
     </SafeAreaView>
   );
 }
 
+const ACCENT = '#E85D2F';
+const INK = '#1a1a1a';
+const PAPER = '#fdfbf6';
+const FAINT = '#dcdad3';
+const MUTED = '#8a8a8a';
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FAFAF8' },
+  safe: { flex: 1, backgroundColor: PAPER },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EBEBEB',
+    borderBottomWidth: 1.5,
+    borderBottomColor: FAINT,
+    gap: 12,
   },
-  backBtn: { paddingVertical: 4, paddingRight: 12 },
-  backText: { color: '#E85D2F', fontSize: 15, fontWeight: '600' },
-  headerTitle: { fontSize: 13, color: '#999', fontWeight: '500' },
-
-  list: { padding: 16, gap: 24 },
-
-  section: { gap: 10 },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    color: '#999',
-    textTransform: 'uppercase',
-    paddingLeft: 4,
+  backBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    borderWidth: 1.5, borderColor: INK,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#fff',
   },
+  backText: { fontSize: 16, color: INK, fontWeight: '700' },
+  headerCenter: { flex: 1 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: INK },
+  headerSub: { fontSize: 11, color: MUTED, fontFamily: 'Courier' },
+  langPill: {
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 100, borderWidth: 1.5, borderColor: INK,
+    backgroundColor: '#fff',
+  },
+  langText: { fontSize: 10, fontWeight: '700', fontFamily: 'Courier' },
+
+  list: { padding: 16, paddingBottom: 100, gap: 10 },
 
   card: {
-    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    borderWidth: 1.5,
+    borderColor: FAINT,
     borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    backgroundColor: '#fff',
   },
 
-  imgBox: { height: CARD_IMG_H, position: 'relative' },
-  img: { width: '100%', height: CARD_IMG_H },
-  noPhoto: {
-    flex: 1,
-    backgroundColor: '#F0EDE8',
-    alignItems: 'center',
-    justifyContent: 'center',
+  thumb: {
+    width: 56, height: 56, borderRadius: 10,
+    overflow: 'hidden', flexShrink: 0,
+    borderWidth: 1.5, borderColor: INK,
   },
-  noPhotoText: { fontSize: 12, color: '#BBB' },
-
-  badge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+  thumbImg: { width: 56, height: 56 },
+  thumbEmpty: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: PAPER, gap: 2,
+    borderWidth: 1.5, borderColor: ACCENT, borderStyle: 'dashed',
+    borderRadius: 10,
   },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '600' },
+  thumbEmptyIcon: { fontSize: 16 },
+  thumbEmptyText: { fontSize: 7, color: ACCENT, fontWeight: '700', textAlign: 'center', fontFamily: 'Courier' },
 
-  info: { padding: 14, gap: 3 },
-  dishName: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
-  englishName: { fontSize: 13, color: '#888' },
-  price: { fontSize: 14, fontWeight: '600', color: '#E85D2F', marginTop: 2 },
+  cardInfo: { flex: 1, minWidth: 0, gap: 3 },
+  dishName: { fontSize: 14, fontWeight: '700', color: INK },
+  dishEn: { fontSize: 11, color: MUTED, fontFamily: 'Courier' },
+  webBadge: { fontSize: 8, color: ACCENT, fontWeight: '700', fontFamily: 'Courier' },
 
-  lightbox: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    gap: 16,
+  price: { fontSize: 14, fontWeight: '700', color: INK, flexShrink: 0 },
+
+  fab: { position: 'absolute', bottom: 28, left: 0, right: 0, alignItems: 'center' },
+  fabBtn: {
+    paddingHorizontal: 20, paddingVertical: 12,
+    borderRadius: 100,
+    borderWidth: 1.5, borderColor: INK,
+    backgroundColor: INK,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
   },
-  lightboxImg: { width: width - 48, height: (width - 48) * 0.7, borderRadius: 14 },
-  lightboxInfo: { alignItems: 'center', gap: 4 },
-  lightboxName: { color: '#fff', fontSize: 22, fontWeight: '700', textAlign: 'center' },
-  lightboxEn: { color: '#aaa', fontSize: 15, textAlign: 'center' },
-  lightboxPrice: { color: '#E85D2F', fontSize: 18, fontWeight: '700', marginTop: 4 },
-  lightboxDismiss: { color: '#555', fontSize: 12, marginTop: 8 },
+  fabText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  // Modal
+  modal: { flex: 1, backgroundColor: PAPER },
+
+  modalHero: { height: 300, position: 'relative' },
+  modalImg: { width: '100%', height: 300 },
+  modalNoPhoto: {
+    height: 300, backgroundColor: '#f0ede8',
+    alignItems: 'center', justifyContent: 'center',
+    borderBottomWidth: 1.5, borderBottomColor: INK,
+  },
+  modalNoPhotoText: { color: MUTED, fontSize: 14 },
+
+  closeBtn: {
+    position: 'absolute', top: 52, left: 16,
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#fff', borderWidth: 1.5, borderColor: INK,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: INK, shadowOffset: { width: 2, height: 2 }, shadowOpacity: 1, shadowRadius: 0,
+  },
+  closeBtnText: { fontSize: 18, fontWeight: '700', color: INK },
+
+  sourceBadge: {
+    position: 'absolute', bottom: 10, left: 16,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 100,
+  },
+  sourceBadgeText: { color: '#fff', fontSize: 10, fontFamily: 'Courier' },
+
+  modalContent: { flex: 1, padding: 22 },
+  modalNameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 8 },
+  modalName: { flex: 1, fontSize: 26, fontWeight: '800', color: INK },
+  modalPrice: { fontSize: 22, fontWeight: '800', color: INK },
+
+  translationPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 100, borderWidth: 1, borderColor: MUTED,
+    borderStyle: 'dashed', marginBottom: 16,
+  },
+  translationText: { fontSize: 11, color: MUTED, fontFamily: 'Courier' },
+
+  divider: { height: 1, borderTopWidth: 1, borderTopColor: FAINT, borderStyle: 'dashed', marginBottom: 12 },
+  sourceNote: { fontSize: 11, color: MUTED, fontFamily: 'Courier' },
 });
