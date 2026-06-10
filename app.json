@@ -14,7 +14,8 @@
       "bundleIdentifier": "com.vinossamuel.peek",
       "infoPlist": {
         "NSCameraUsageDescription": "Peek uses your camera to scan restaurant menus.",
-        "NSLocationWhenInUseUsageDescription": "Peek uses your location to find the restaurant you're in and match dish photos."
+        "NSLocationWhenInUseUsageDescription": "Peek uses your location to find the restaurant you're in and match dish photos.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -26,7 +27,8 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "plugins": [
@@ -39,7 +41,10 @@
       "GEMINI_API_KEY": "",
       "PLACES_API_KEY": "",
       "SEARCH_API_KEY": "",
-      "SEARCH_CX": ""
+      "SEARCH_CX": "",
+      "eas": {
+        "projectId": "1144f744-a619-4f9d-ada4-d3be6a38d4bc"
+      }
     }
   }
 }

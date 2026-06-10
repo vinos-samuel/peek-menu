@@ -11,6 +11,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { extractDishesFromMenu } from '../services/gemini';
 import { getDishPhoto } from '../services/photos';
@@ -18,6 +19,7 @@ import Constants from 'expo-constants';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Camera'>;
+  route: RouteProp<RootStackParamList, 'Camera'>;
 };
 
 const KEYS = {
@@ -33,7 +35,8 @@ const STEPS = [
   'Finding photos…',
 ];
 
-export default function CameraScreen({ navigation }: Props) {
+export default function CameraScreen({ navigation, route }: Props) {
+  const restaurant = route.params?.restaurant;
   const [permission, requestPermission] = useCameraPermissions();
   const [processing, setProcessing] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -86,7 +89,7 @@ export default function CameraScreen({ navigation }: Props) {
       );
 
       const results = capped.map((d, i) => ({ ...d, photo: photos[i] }));
-      navigation.replace('Results', { menuPhotoUri: photo.uri, dishes: results });
+      navigation.replace('Results', { menuPhotoUri: photo.uri, dishes: results, restaurant });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       Alert.alert('Something went wrong', msg);

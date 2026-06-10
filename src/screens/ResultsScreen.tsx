@@ -32,7 +32,7 @@ const FLAG_MAP: Record<string, { icon: string; label: string }> = {
 };
 
 export default function ResultsScreen({ navigation, route }: Props) {
-  const { dishes } = route.params;
+  const { dishes, restaurant } = route.params;
   const [selected, setSelected] = useState<(typeof dishes)[0] | null>(null);
   const withPhotos = dishes.filter((d) => d.photo.source !== 'none').length;
 
@@ -45,7 +45,7 @@ export default function ResultsScreen({ navigation, route }: Props) {
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Menu</Text>
+          <Text style={styles.headerTitle}>{restaurant?.name ?? 'Menu'}</Text>
           <Text style={styles.headerSub}>{dishes.length} dishes · tap any to peek</Text>
         </View>
         <View style={styles.langPill}>
@@ -98,7 +98,7 @@ export default function ResultsScreen({ navigation, route }: Props) {
         <TouchableOpacity
           style={styles.fabBtn}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate('Camera')}
+          onPress={() => navigation.navigate('Home')}
         >
           <Text style={styles.fabText}>📷  Scan again</Text>
         </TouchableOpacity>
