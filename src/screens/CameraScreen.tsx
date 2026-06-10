@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
@@ -26,10 +27,16 @@ const KEYS = {
   searchCx: (Constants.expoConfig?.extra?.SEARCH_CX ?? '') as string,
 };
 
+const STEPS = [
+  'Reading menu…',
+  'Identifying dishes…',
+  'Finding photos…',
+];
+
 export default function CameraScreen({ navigation }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const [processing, setProcessing] = useState(false);
-  const [statusText, setStatusText] = useState('');
+  const [stepIndex, setStepIndex] = useState(0);
   const cameraRef = useRef<CameraView>(null);
 
   useEffect(() => {
@@ -39,25 +46,25 @@ export default function CameraScreen({ navigation }: Props) {
   async function handleCapture() {
     if (!cameraRef.current || processing) return;
     setProcessing(true);
+    setStepIndex(0);
 
     try {
-      // 1. Take photo
-      setStatusText('Reading menu…');
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (!photo) throw new Error('No photo captured');
 
-      // 2. Get location (best-effort)
+      // Get location best-effort
       let lat: number | null = null;
       let lng: number | null = null;
       const locPerm = await Location.requestForegroundPermissionsAsync();
       if (locPerm.granted) {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
         lat = loc.coords.latitude;
         lng = loc.coords.longitude;
       }
 
-      // 3. Extract dishes via Gemini
-      setStatusText('Identifying dishes…');
+      setStepIndex(1);
       const dishes = await extractDishesFromMenu(photo.uri, KEYS.gemini);
 
       if (dishes.length === 0) {
@@ -66,8 +73,7 @@ export default function CameraScreen({ navigation }: Props) {
         return;
       }
 
-      // 4. Fetch photos concurrently (cap at 12 dishes to limit API calls)
-      setStatusText(`Finding photos for ${dishes.length} dishes…`);
+      setStepIndex(2);
       const capped = dishes.slice(0, 12);
       const photos = await Promise.all(
         capped.map((d) =>
@@ -80,114 +86,174 @@ export default function CameraScreen({ navigation }: Props) {
       );
 
       const results = capped.map((d, i) => ({ ...d, photo: photos[i] }));
-
       navigation.replace('Results', { menuPhotoUri: photo.uri, dishes: results });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       Alert.alert('Something went wrong', msg);
     } finally {
       setProcessing(false);
-      setStatusText('');
+      setStepIndex(0);
     }
   }
 
-  if (!permission) return <View style={styles.center} />;
+  if (!permission) return <View style={styles.safe} />;
 
   if (!permission.granted) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.permText}>Camera access needed</Text>
-        <TouchableOpacity style={styles.permBtn} onPress={requestPermission}>
-          <Text style={styles.permBtnText}>Allow Camera</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.permContainer}>
+          <Text style={styles.permTitle}>Camera access needed</Text>
+          <Text style={styles.permSub}>Peek needs your camera to read menus.</Text>
+          <TouchableOpacity style={styles.permBtn} onPress={requestPermission}>
+            <Text style={styles.permBtnText}>Allow Camera</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={styles.camera} facing="back">
-        {/* Viewfinder guide */}
-        <View style={styles.overlay}>
-          <View style={styles.guide}>
-            <Text style={styles.guideText}>Frame the menu</Text>
+
+        {/* Corner guides */}
+        {[
+          { top: 60, left: 24 },
+          { top: 60, right: 24, flipX: true },
+          { bottom: 140, right: 24, flipX: true, flipY: true },
+          { bottom: 140, left: 24, flipY: true },
+        ].map((c, i) => (
+          <View key={i} style={[
+            styles.corner,
+            c.top !== undefined ? { top: c.top } : { bottom: c.bottom },
+            c.left !== undefined ? { left: c.left } : { right: c.right },
+            c.flipX ? styles.cornerFlipX : null,
+            c.flipY ? styles.cornerFlipY : null,
+          ]}>
+            <View style={styles.cornerH} />
+            <View style={styles.cornerV} />
           </View>
+        ))}
+
+        {/* Guide pill */}
+        <View style={styles.guidePill}>
+          <Text style={styles.guideText}>fit menu in frame</Text>
         </View>
+
+        {/* Back button */}
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backText}>×</Text>
+        </TouchableOpacity>
+
       </CameraView>
 
       {/* Processing overlay */}
       {processing && (
         <View style={styles.processingOverlay}>
           <ActivityIndicator size="large" color="#E85D2F" />
-          <Text style={styles.processingText}>{statusText}</Text>
+          <Text style={styles.processingText}>{STEPS[stepIndex]}</Text>
+          <View style={styles.stepDots}>
+            {STEPS.map((_, i) => (
+              <View key={i} style={[styles.dot, i <= stepIndex ? styles.dotActive : null]} />
+            ))}
+          </View>
         </View>
       )}
 
-      {/* Shutter */}
+      {/* Shutter row */}
       {!processing && (
         <View style={styles.shutterRow}>
-          <TouchableOpacity style={styles.shutter} onPress={handleCapture} activeOpacity={0.8}>
-            <View style={styles.shutterInner} />
+          <View style={styles.shutterSide} />
+          <TouchableOpacity
+            style={styles.shutter}
+            activeOpacity={0.8}
+            onPress={handleCapture}
+          >
+            <View style={styles.shutterFill} />
           </TouchableOpacity>
+          <View style={styles.shutterSide} />
         </View>
       )}
     </View>
   );
 }
 
+const ACCENT = '#E85D2F';
+const INK = '#1a1a1a';
+
 const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#FDFBF6' },
   container: { flex: 1, backgroundColor: '#000' },
   camera: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAF8' },
-  permText: { fontSize: 16, color: '#333', marginBottom: 16 },
-  permBtn: { backgroundColor: '#E85D2F', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-  permBtnText: { color: '#fff', fontWeight: '700' },
 
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingBottom: 120,
-    alignItems: 'center',
+  permContainer: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 40, gap: 12,
   },
-  guide: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.6)',
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+  permTitle: { fontSize: 20, fontWeight: '800', color: INK },
+  permSub: { fontSize: 14, color: '#8a8a8a', textAlign: 'center' },
+  permBtn: {
+    marginTop: 8, backgroundColor: ACCENT,
+    paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14,
   },
-  guideText: { color: '#fff', fontSize: 13, opacity: 0.9 },
+  permBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 
-  shutterRow: {
+  corner: { position: 'absolute', width: 24, height: 24 },
+  cornerH: { position: 'absolute', top: 0, left: 0, width: 24, height: 2.5, backgroundColor: ACCENT, borderRadius: 2 },
+  cornerV: { position: 'absolute', top: 0, left: 0, width: 2.5, height: 24, backgroundColor: ACCENT, borderRadius: 2 },
+  cornerFlipX: { transform: [{ scaleX: -1 }] },
+  cornerFlipY: { transform: [{ scaleY: -1 }] },
+
+  guidePill: {
     position: 'absolute',
-    bottom: 48,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
+    top: 24,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 100,
   },
-  shutter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+  guideText: { color: '#fff', fontSize: 12, fontFamily: 'Courier' },
+
+  backBtn: {
+    position: 'absolute',
+    top: 52, left: 16,
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderWidth: 1.5, borderColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
   },
-  shutterInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#fff',
-  },
+  backText: { color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 22 },
 
   processingOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.75)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    gap: 14,
   },
   processingText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  stepDots: { flexDirection: 'row', gap: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
+  dotActive: { backgroundColor: ACCENT },
+
+  shutterRow: {
+    position: 'absolute', bottom: 48,
+    left: 0, right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 48,
+  },
+  shutterSide: { width: 48, height: 48 },
+  shutter: {
+    width: 80, height: 80, borderRadius: 40,
+    borderWidth: 2.5, borderColor: '#fff',
+    padding: 4,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  shutterFill: { flex: 1, borderRadius: 40, backgroundColor: '#fff' },
 });
