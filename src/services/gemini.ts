@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 
 const GEMINI_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
@@ -14,10 +14,9 @@ export async function extractDishesFromMenu(
   photoUri: string,
   apiKey: string,
 ): Promise<DishResult[]> {
-  // Use readAsStringAsync with base64 encoding (still valid in expo-file-system v18+)
-  const base64 = await FileSystem.readAsStringAsync(photoUri, {
-    encoding: 'base64' as FileSystem.EncodingType,
-  });
+  // New expo-file-system v56 API — use File class
+  const file = new File(photoUri);
+  const base64 = await file.base64();
 
   const body = {
     contents: [

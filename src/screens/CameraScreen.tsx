@@ -223,13 +223,14 @@ const styles = StyleSheet.create({
 
   backBtn: {
     position: 'absolute',
-    top: 52, left: 16,
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    top: 60, left: 20,
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     borderWidth: 1.5, borderColor: '#fff',
     alignItems: 'center', justifyContent: 'center',
+    zIndex: 10,
   },
-  backText: { color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 22 },
+  backText: { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 24 },
 
   processingOverlay: {
     ...StyleSheet.absoluteFill,
