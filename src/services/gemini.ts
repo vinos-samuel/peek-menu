@@ -43,7 +43,8 @@ No markdown. No explanation. JSON array only.`,
     ],
     generationConfig: {
       temperature: 0,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 8192,
+      responseMimeType: 'application/json',
     },
   };
 
