@@ -9,12 +9,11 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Location from 'expo-location';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { extractDishesFromMenu } from '../services/gemini';
-import { getDishPhoto } from '../services/photos';
+import { getDishPhotos } from '../services/photos';
 import Constants from 'expo-constants';
 
 type Props = {
@@ -22,11 +21,14 @@ type Props = {
   route: RouteProp<RootStackParamList, 'Camera'>;
 };
 
+const extra = Constants.expoConfig?.extra ?? {};
+console.log('DEBUG extra keys:', JSON.stringify({
+  gemini: extra.GEMINI_API_KEY?.substring(0, 10),
+  places: extra.PLACES_API_KEY?.substring(0, 10),
+}));
+
 const KEYS = {
-  gemini: (Constants.expoConfig?.extra?.GEMINI_API_KEY ?? '') as string,
-  places: (Constants.expoConfig?.extra?.PLACES_API_KEY ?? '') as string,
-  searchKey: (Constants.expoConfig?.extra?.SEARCH_API_KEY ?? '') as string,
-  searchCx: (Constants.expoConfig?.extra?.SEARCH_CX ?? '') as string,
+  gemini: (extra.GEMINI_API_KEY ?? '') as string,
 };
 
 const STEPS = [
@@ -55,18 +57,6 @@ export default function CameraScreen({ navigation, route }: Props) {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (!photo) throw new Error('No photo captured');
 
-      // Get location best-effort
-      let lat: number | null = null;
-      let lng: number | null = null;
-      const locPerm = await Location.requestForegroundPermissionsAsync();
-      if (locPerm.granted) {
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        lat = loc.coords.latitude;
-        lng = loc.coords.longitude;
-      }
-
       setStepIndex(1);
       const dishes = await extractDishesFromMenu(photo.uri, KEYS.gemini);
 
@@ -78,17 +68,8 @@ export default function CameraScreen({ navigation, route }: Props) {
 
       setStepIndex(2);
       const capped = dishes.slice(0, 12);
-      const photos = await Promise.all(
-        capped.map((d) =>
-          getDishPhoto(d.englishName, lat, lng, {
-            placesKey: KEYS.places,
-            searchKey: KEYS.searchKey,
-            searchCx: KEYS.searchCx,
-          }),
-        ),
-      );
-
-      const results = capped.map((d, i) => ({ ...d, photo: photos[i] }));
+      const photoMap = await getDishPhotos(capped.map((d) => d.englishName), restaurant?.name);
+      const results = capped.map((d) => ({ ...d, photo: photoMap[d.englishName] }));
       navigation.replace('Results', { menuPhotoUri: photo.uri, dishes: results, restaurant });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

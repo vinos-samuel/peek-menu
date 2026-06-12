@@ -82,7 +82,7 @@ export default function ResultsScreen({ navigation, route }: Props) {
               {dish.englishName !== dish.originalName && (
                 <Text style={styles.dishEn}>↳ {dish.englishName}</Text>
               )}
-              {dish.photo.source === 'search' && (
+              {dish.photo.source === 'wikipedia' && (
                 <Text style={styles.webBadge}>WEB</Text>
               )}
             </View>
@@ -128,14 +128,14 @@ export default function ResultsScreen({ navigation, route }: Props) {
               </TouchableOpacity>
 
               {/* Source badge */}
-              {selected.photo.source === 'search' && (
+              {selected.photo.source === 'wikipedia' && (
                 <View style={styles.sourceBadge}>
-                  <Text style={styles.sourceBadgeText}>web search</Text>
+                  <Text style={styles.sourceBadgeText}>from Wikipedia</Text>
                 </View>
               )}
-              {selected.photo.source === 'places' && (
+              {selected.photo.source === 'mealdb' && (
                 <View style={styles.sourceBadge}>
-                  <Text style={styles.sourceBadgeText}>📷 from diners · Google</Text>
+                  <Text style={styles.sourceBadgeText}>recipe photo</Text>
                 </View>
               )}
             </View>
@@ -156,10 +156,10 @@ export default function ResultsScreen({ navigation, route }: Props) {
               <View style={styles.divider} />
               <Text style={styles.sourceNote}>
                 {selected.photo.source === 'none'
-                  ? 'No diner photos found for this dish.'
-                  : selected.photo.source === 'places'
-                  ? 'Photo from Google restaurant reviews.'
-                  : 'Photo from web image search.'}
+                  ? 'No photo found for this dish.'
+                  : selected.photo.source === 'mealdb'
+                  ? 'Photo from a recipe database — not from this restaurant.'
+                  : 'Photo from Wikipedia — not from this restaurant.'}
               </Text>
             </ScrollView>
           </View>
