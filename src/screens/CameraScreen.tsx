@@ -22,10 +22,6 @@ type Props = {
 };
 
 const extra = Constants.expoConfig?.extra ?? {};
-console.log('DEBUG extra keys:', JSON.stringify({
-  gemini: extra.GEMINI_API_KEY?.substring(0, 10),
-  places: extra.PLACES_API_KEY?.substring(0, 10),
-}));
 
 const KEYS = {
   gemini: (extra.GEMINI_API_KEY ?? '') as string,
